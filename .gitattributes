@@ -3,6 +3,8 @@
 
 *.cs        text eol=lf
 *.ps1       text eol=lf
+# cmd.exe mis-parses LF-only batch files around labels and goto.
+*.cmd       text eol=crlf
 *.config    text eol=lf
 *.txt       text eol=lf
 *.md        text eol=lf

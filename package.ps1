@@ -12,14 +12,14 @@ if (-not (Test-Path -LiteralPath $dll)) { throw "NvcChs.dll not found: $dll (run
 if (-not $OutputPath) { $OutputPath = Join-Path $here 'NvcChs.zip' }
 
 # Entry name => source file. Names are relative to the install directory and mirror its
-# layout, so extracting the zip there is the whole install: the DLL reads its dictionary
-# from <appbase>\NVC_CHS, never from beside the exe. Forward slashes are required by the
-# ZIP spec; Compress-Archive on PowerShell 5.1 emits backslashes, so entries are written
-# directly instead.
+# layout, so extracting the zip there is the whole install. Forward slashes are required
+# by the ZIP spec; Compress-Archive on PowerShell 5.1 emits backslashes, so entries are
+# written directly instead.
 $manifest = [ordered]@{
     'NvcChs.dll'              = $dll
     'NVCleanstall.exe.config' = Join-Path $here 'NVCleanstall.exe.config'
-    'NVC_CHS/zh-CN.txt'       = Join-Path $here 'zh-CN.txt'
+    'install.cmd'             = Join-Path $here 'install.cmd'
+    'zh-CN.txt'               = Join-Path $here 'zh-CN.txt'
     'README.md'               = Join-Path $here 'README.md'
 }
 

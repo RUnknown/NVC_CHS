@@ -1,5 +1,7 @@
 # Enable / disable / inspect the NVC_CHS localisation.
-# Only the config and the payload DLL are added next to the exe; the exe is never modified.
+# Only configs and the payload DLL are added next to the exes; the exes are never modified.
+# Every NVCleanstall*.exe gets its own <exe filename>.config: the CLR ignores a config whose
+# name does not match the executable, so renamed portable builds need one each.
 param(
     [switch] $Rollback,
     [switch] $Status
@@ -8,35 +10,49 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $app  = Split-Path -Parent $here
-$exe  = Join-Path $app 'NVCleanstall.exe'
-$cfg  = Join-Path $app 'NVCleanstall.exe.config'
 $dll  = Join-Path $app 'NvcChs.dll'
 $cfgSource = Join-Path $here 'NVCleanstall.exe.config'
 
-if (-not (Test-Path -LiteralPath $exe)) { throw "NVCleanstall.exe not found: $exe" }
+$exes = @(Get-ChildItem -LiteralPath $app -Filter 'NVCleanstall*.exe' -File -ErrorAction SilentlyContinue)
+if ($exes.Count -eq 0) { throw "No NVCleanstall*.exe found in: $app" }
+
+function Get-TargetConfig([string] $exePath) { return $exePath + '.config' }
+
+function Test-OurConfig([string] $cfgPath)
+{
+    if (-not (Test-Path -LiteralPath $cfgPath)) { return $false }
+    return (Get-Content -LiteralPath $cfgPath -Raw) -match 'appDomainManagerType'
+}
 
 if ($Status)
 {
-    "EXE            : $((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash)"
-    "Signature      : $((Get-AuthenticodeSignature -LiteralPath $exe).Status)"
-    "ConfigPresent  : $(Test-Path -LiteralPath $cfg)"
-    "PayloadDll     : $(Test-Path -LiteralPath $dll)"
-    "Dictionary     : $(Test-Path -LiteralPath (Join-Path $here 'zh-CN.txt'))"
+    foreach ($e in $exes)
+    {
+        $c = Get-TargetConfig $e.FullName
+        "EXE            : $($e.Name)"
+        "  Hash         : $((Get-FileHash -LiteralPath $e.FullName -Algorithm SHA256).Hash)"
+        "  Signature    : $((Get-AuthenticodeSignature -LiteralPath $e.FullName).Status)"
+        "  Config       : $(Test-Path -LiteralPath $c) ($c)"
+    }
+    "PayloadDll     : $(Test-Path -LiteralPath $dll) ($dll)"
+    "Dictionary     : $(Join-Path $app 'zh-CN.txt') / $(Join-Path $here 'zh-CN.txt')"
     "RootFiles      : $((Get-ChildItem -LiteralPath $app -File | Select-Object -ExpandProperty Name) -join ', ')"
     return
 }
 
 if ($Rollback)
 {
-    foreach ($f in @($cfg, $dll))
+    foreach ($e in $exes)
     {
-        if (Test-Path -LiteralPath $f)
+        $c = Get-TargetConfig $e.FullName
+        if (Test-OurConfig $c)
         {
-            Remove-Item -LiteralPath $f -Force
-            "Removed: $f"
+            Remove-Item -LiteralPath $c -Force
+            "Removed: $c"
         }
     }
-    "Localisation fully reverted. NVCleanstall.exe was never modified."
+    if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force; "Removed: $dll" }
+    "Localisation fully reverted. The NVCleanstall executables were never modified."
     return
 }
 
@@ -45,21 +61,22 @@ foreach ($f in @($cfgSource, $dll, (Join-Path $here 'zh-CN.txt')))
     if (-not (Test-Path -LiteralPath $f)) { throw "Missing required file: $f (run build.ps1 first)" }
 }
 
-# Refuse to clobber an unrelated application config.
-if (Test-Path -LiteralPath $cfg)
+foreach ($e in $exes)
 {
-    $existing = Get-Content -LiteralPath $cfg -Raw
-    if ($existing -notmatch 'appDomainManagerType')
+    $c = Get-TargetConfig $e.FullName
+    if ((Test-Path -LiteralPath $c) -and -not (Test-OurConfig $c))
     {
-        throw "An unrelated config already exists at $cfg -- refusing to overwrite it."
+        throw "An unrelated config already exists at $c -- refusing to overwrite it."
     }
+    Copy-Item -LiteralPath $cfgSource -Destination $c -Force
+    "Installed config : $c"
 }
 
-Copy-Item -LiteralPath $cfgSource -Destination $cfg -Force
-"Installed config : $cfg"
 "Payload DLL      : $dll (appbase, no probing required)"
-"Dictionary       : $(Join-Path $here 'zh-CN.txt')"
-"EXE unchanged    : $((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash)"
-"Signature        : $((Get-AuthenticodeSignature -LiteralPath $exe).Status)"
+"Dictionary       : $(Join-Path $app 'zh-CN.txt') or $(Join-Path $here 'zh-CN.txt')"
+foreach ($e in $exes)
+{
+    "EXE unchanged    : $($e.Name) $((Get-FileHash -LiteralPath $e.FullName -Algorithm SHA256).Hash)"
+}
 ""
 "To disable:  & '$($MyInvocation.MyCommand.Path)' -Rollback"

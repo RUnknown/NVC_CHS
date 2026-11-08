@@ -40,6 +40,15 @@ namespace NvcChs
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
         private static readonly Delegate ScanDelegate = new Action(ScanAll);
 
+        // Release builds leave no files behind; build.ps1 -Diagnostics restores the
+        // seen/missing/status dumps used to extend the dictionary.
+#if DIAGNOSTICS
+        private static readonly bool Diagnostics = true;
+#else
+        private static readonly bool Diagnostics = false;
+#endif
+
+        private static string _baseDir;
         private static string _dir;
         private static string _dictPath;
         private static DateTime _dictStamp;
@@ -115,18 +124,46 @@ namespace NvcChs
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 if (string.IsNullOrEmpty(baseDir)) return;
 
+                _baseDir = baseDir;
                 _dir = Path.Combine(baseDir, SubDir);
-                if (!Directory.Exists(_dir)) Directory.CreateDirectory(_dir);
-                _dictPath = Path.Combine(_dir, "zh-CN.txt");
+                _dictPath = ResolveDictPath();
 
-                // Per-run truncation stops a long-lived install from growing a log forever.
-                try { File.WriteAllText(Path.Combine(_dir, "error.log"), "", Utf8NoBom); }
-                catch { }
+                // A healthy run leaves no trace: the data subdir is created only when
+                // there is something to report.
+                if (Diagnostics)
+                {
+                    // Per-run truncation stops a long-lived install from growing a log forever.
+                    if (!Directory.Exists(_dir)) Directory.CreateDirectory(_dir);
+                    try { File.WriteAllText(Path.Combine(_dir, "error.log"), "", Utf8NoBom); }
+                    catch { }
+                }
+                else CleanDataDir();
 
                 LoadDictionary();
                 _initialised = true;
             }
             catch (Exception e) { RecordOnce("INIT_FAIL " + e); }
+        }
+
+        // Files this patch may leave behind. The dictionary is user data and is kept.
+        private static readonly string[] DataFiles = { "error.log", "status.txt", "seen.txt", "missing.txt" };
+
+        // Release builds start from a clean slate: drop whatever a diagnostics build or an
+        // earlier failure left, then the directory itself if nothing else uses it.
+        private static void CleanDataDir()
+        {
+            if (string.IsNullOrEmpty(_dir)) return;
+            try
+            {
+                foreach (string name in DataFiles)
+                {
+                    string f = Path.Combine(_dir, name);
+                    if (File.Exists(f)) File.Delete(f);
+                }
+                if (Directory.Exists(_dir) && Directory.GetFileSystemEntries(_dir).Length == 0)
+                    Directory.Delete(_dir);
+            }
+            catch { }
         }
 
         private static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs args)
@@ -559,7 +596,7 @@ namespace NvcChs
 
         private static void Observe(string s, bool pendingTranslation)
         {
-            if (string.IsNullOrEmpty(s)) return;
+            if (!Diagnostics || string.IsNullOrEmpty(s)) return;
             s = NormaliseForObservation(s);
             if (Seen.Add(s)) _dirty = 1;
             if (pendingTranslation)
@@ -608,11 +645,30 @@ namespace NvcChs
             return false;
         }
 
+        // A dictionary beside the exe wins; the data subdir is the fallback. Re-resolved
+        // on every check so a file appearing at either location is picked up by hot reload.
+        private static string ResolveDictPath()
+        {
+            if (string.IsNullOrEmpty(_baseDir)) return _dictPath;
+            string beside = Path.Combine(_baseDir, "zh-CN.txt");
+            if (File.Exists(beside)) return beside;
+            return Path.Combine(_baseDir, SubDir, "zh-CN.txt");
+        }
+
+        private static string DictCandidates()
+        {
+            if (string.IsNullOrEmpty(_baseDir)) return _dictPath;
+            return Path.Combine(_baseDir, "zh-CN.txt") + " or " + Path.Combine(_baseDir, SubDir, "zh-CN.txt");
+        }
+
         private static void EnsureDictionaryFresh()
         {
             try
             {
-                if (File.GetLastWriteTimeUtc(_dictPath) == _dictStamp) return;
+                string path = ResolveDictPath();
+                DateTime stamp = File.GetLastWriteTimeUtc(path);
+                if (path == _dictPath && stamp == _dictStamp) return;
+                _dictPath = path;
                 // A failed reload keeps the old dictionary and the old stamp, so the
                 // next tick retries instead of running untranslated for the session.
                 if (!LoadDictionary()) return;
@@ -681,7 +737,7 @@ namespace NvcChs
                 }
                 // Still succeed: the file can be dropped in later, and the stamp
                 // check in EnsureDictionaryFresh reloads it without a restart.
-                else RecordOnce("DICT_MISSING: " + _dictPath);
+                else RecordOnce("DICT_MISSING: " + DictCandidates());
             }
             catch (Exception e) { RecordOnce("DICT_FAIL: " + e); return false; }
 
@@ -699,6 +755,11 @@ namespace NvcChs
         {
             lock (Sync)
             {
+                if (!Diagnostics)
+                {
+                    _dirty = 0;
+                    return;
+                }
                 try
                 {
                     File.WriteAllLines(Path.Combine(_dir, "seen.txt"),
@@ -707,6 +768,7 @@ namespace NvcChs
                         SortedEscaped(Missing), Utf8NoBom);
                     File.WriteAllText(Path.Combine(_dir, "status.txt"),
                         "dictionary=" + Dict.Count + "\r\n" +
+                        "dictionaryPath=" + _dictPath + "\r\n" +
                         "prefixRules=" + PrefixRules.Count + "\r\n" +
                         "scans=" + _scans + "\r\n" +
                         "wakeIntervalMs=" + WakeIntervalMs + "\r\n" +
@@ -745,6 +807,8 @@ namespace NvcChs
                 if (string.IsNullOrEmpty(_dir)) return;
                 try
                 {
+                    // A failure is the one thing allowed to create the data subdir.
+                    if (!Directory.Exists(_dir)) Directory.CreateDirectory(_dir);
                     File.AppendAllText(Path.Combine(_dir, "error.log"),
                         DateTime.Now.ToString("o", CultureInfo.InvariantCulture) + " " + message + "\r\n",
                         Utf8NoBom);

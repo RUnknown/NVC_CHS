@@ -1,8 +1,11 @@
 # Build NvcChs.dll with the .NET Framework 4.x C# compiler; no WPF references.
 # The CLR resolves AppDomainManager assemblies from the appbase, hence output next to the exe.
 # -SkipHostCheck lets CI build without the NVCleanstall.exe host present.
+# -Diagnostics compiles the version that writes seen/missing/status.txt, for extending the
+#   dictionary. The default build writes nothing unless something fails.
 param(
-    [switch] $SkipHostCheck
+    [switch] $SkipHostCheck,
+    [switch] $Diagnostics
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,7 +23,9 @@ if (-not $SkipHostCheck -and -not (Test-Path -LiteralPath (Join-Path $app 'NVCle
 }
 
 $outArg = '/out:' + $out
-& $csc /nologo /target:library /optimize+ /platform:anycpu /warn:4 $outArg $src 2>&1
+$defines = @()
+if ($Diagnostics) { $defines += '/define:DIAGNOSTICS' }
+& $csc /nologo /target:library /optimize+ /platform:anycpu /warn:4 @defines $outArg $src 2>&1
 if ($LASTEXITCODE -ne 0) { throw "csc failed with exit code $LASTEXITCODE" }
 
 $an = [System.Reflection.AssemblyName]::GetAssemblyName($out)

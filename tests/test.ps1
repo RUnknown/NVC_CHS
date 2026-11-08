@@ -106,6 +106,108 @@ try
         SetField '_dictPath' $tmp
     }
 
+    # ---- a dictionary beside the exe wins; the data subdir is the fallback ----
+    $probeBase = Join-Path $env:TEMP ('nvcchs-base-' + [guid]::NewGuid().ToString('N'))
+    $probeSub  = Join-Path $probeBase 'NVC_CHS'
+    try
+    {
+        [void][IO.Directory]::CreateDirectory($probeSub)
+        [IO.File]::WriteAllText((Join-Path $probeSub 'zh-CN.txt'), "Echo=SUB`r`n", $utf8)
+        SetField '_baseDir' $probeBase
+        SetField '_dictPath' $null
+        SetField '_dictStamp' ([datetime]::MinValue)
+        $fresh.Invoke($null, $null)
+        $v = $tr.Invoke($null, @('Echo'))
+        Check 'subdir dictionary used when nothing is beside the exe' ($v -eq 'SUB') "Translate(Echo) returned [$v]"
+
+        $beside = Join-Path $probeBase 'zh-CN.txt'
+        [IO.File]::WriteAllText($beside, "Echo=ROOT`r`n", $utf8)
+        $fresh.Invoke($null, $null)
+        $v = $tr.Invoke($null, @('Echo'))
+        Check 'dictionary beside the exe wins' ($v -eq 'ROOT') "Translate(Echo) returned [$v]"
+        Check 'dictionaryPath reports the file actually read' ((GetField '_dictPath') -eq $beside) "_dictPath is [$(GetField '_dictPath')]"
+
+        Remove-Item -LiteralPath $beside -Force
+        $fresh.Invoke($null, $null)
+        $v = $tr.Invoke($null, @('Echo'))
+        Check 'removing the root dictionary falls back to the subdir' ($v -eq 'SUB') "Translate(Echo) returned [$v]"
+    }
+    finally
+    {
+        SetField '_baseDir' $null
+        SetField '_dictPath' $tmp
+        SetField '_dictStamp' ([datetime]::MinValue)
+        Remove-Item -LiteralPath $probeBase -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ---- a healthy run leaves no files; only a failure may create the data subdir ----
+    $quietRoot = Join-Path $env:TEMP ('nvcchs-quiet-' + [guid]::NewGuid().ToString('N'))
+    $quietDir  = Join-Path $quietRoot 'NVC_CHS'
+    try
+    {
+        $diagOn = [bool](GetField 'Diagnostics')
+        # Create the folder in both modes. If it were missing, a write regression would
+        # throw into Flush's catch and this test would pass anyway.
+        [void][IO.Directory]::CreateDirectory($quietDir)
+        SetField '_dir' $quietDir
+        $type.GetMethod('Flush', $f).Invoke($null, $null)
+
+        $files = @(Get-ChildItem -LiteralPath $quietDir -Force | ForEach-Object { $_.Name })
+        if ($diagOn)
+        {
+            Check 'diagnostics build writes status.txt' ($files -contains 'status.txt') "files: $($files -join ', ')"
+        }
+        else
+        {
+            Check 'release build writes no files' ($files.Count -eq 0) "wrote: $($files -join ', ')"
+        }
+
+        # A failure is the one case allowed to leave a trace, in either mode.
+        $type.GetField('RecordedOnce', $f).GetValue($null).Clear()
+        $type.GetMethod('RecordOnce', $f).Invoke($null, @('TEST_FAILURE'))
+        $log = Join-Path $quietDir 'error.log'
+        $text = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw } else { '' }
+        Check 'a failure writes error.log' ($text -match 'TEST_FAILURE') "error.log is [$text]"
+    }
+    finally
+    {
+        SetField '_dir' $null
+        Remove-Item -LiteralPath $quietRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # ---- startup cleanup drops stale dumps but keeps the dictionary ----
+    $cleanRoot = Join-Path $env:TEMP ('nvcchs-clean-' + [guid]::NewGuid().ToString('N'))
+    $cleanDir  = Join-Path $cleanRoot 'NVC_CHS'
+    try
+    {
+        [void][IO.Directory]::CreateDirectory($cleanDir)
+        foreach ($n in @('error.log', 'status.txt', 'seen.txt', 'missing.txt'))
+        {
+            [IO.File]::WriteAllText((Join-Path $cleanDir $n), 'stale')
+        }
+        SetField '_dir' $cleanDir
+        $type.GetMethod('CleanDataDir', $f).Invoke($null, $null)
+
+        $survivors = @('error.log', 'status.txt', 'seen.txt', 'missing.txt' |
+            Where-Object { Test-Path -LiteralPath (Join-Path $cleanDir $_) })
+        Check 'cleanup removes every dump' ($survivors.Count -eq 0) "survived: $($survivors -join ', ')"
+        Check 'cleanup removes the emptied dir' (-not (Test-Path -LiteralPath $cleanDir)) 'dir still exists'
+
+        # The dictionary is user data; a cleanup must never take it.
+        [void][IO.Directory]::CreateDirectory($cleanDir)
+        [IO.File]::WriteAllText((Join-Path $cleanDir 'zh-CN.txt'), "A=B`r`n", $utf8)
+        [IO.File]::WriteAllText((Join-Path $cleanDir 'status.txt'), 'stale')
+        SetField '_dir' $cleanDir
+        $type.GetMethod('CleanDataDir', $f).Invoke($null, $null)
+        Check 'cleanup keeps the dictionary' (Test-Path -LiteralPath (Join-Path $cleanDir 'zh-CN.txt')) 'zh-CN.txt was deleted'
+        Check 'cleanup removes the dump beside it' (-not (Test-Path -LiteralPath (Join-Path $cleanDir 'status.txt'))) 'status.txt survived'
+    }
+    finally
+    {
+        SetField '_dir' $null
+        Remove-Item -LiteralPath $cleanRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     # ---- every Run of one paragraph must be translated in a single pass ----
     [IO.File]::WriteAllText($tmp, "Alpha=AAA`r`n", $utf8)
     SetField '_dictStamp' ([datetime]::MinValue)
@@ -221,7 +323,7 @@ try
             Check 'release zip entry paths use forward slashes' ($badSep.Count -eq 0) "backslash entries: $($badSep -join ', ')"
 
             $entries = @($raw | ForEach-Object { $_.Replace('\', '/') })
-            foreach ($required in @('NvcChs.dll', 'NVCleanstall.exe.config', 'NVC_CHS/zh-CN.txt'))
+            foreach ($required in @('NvcChs.dll', 'NVCleanstall.exe.config', 'install.cmd', 'zh-CN.txt'))
             {
                 Check "release zip contains $required" ($entries -contains $required) "entries: $($entries -join ', ')"
             }
@@ -229,6 +331,59 @@ try
         finally { $archive.Dispose() }
     }
     finally { Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue }
+
+    # ---- install.cmd gives a renamed portable exe its own config ----
+    # The CLR only honours <exe filename>.config, so this is the step that makes
+    # NVCleanstall_1.19.0.exe load the patch at all.
+    $cmdScript   = Join-Path $repo 'install.cmd'
+    $cmdTemplate = Join-Path $repo 'NVCleanstall.exe.config'
+    if (-not (Test-Path -LiteralPath $cmdScript)) { throw "install.cmd not found: $cmdScript" }
+    $cmdDir = Join-Path $env:TEMP ('nvcchs-cmd-' + [guid]::NewGuid().ToString('N'))
+    try
+    {
+        [void][IO.Directory]::CreateDirectory($cmdDir)
+        Copy-Item -LiteralPath $cmdScript -Destination $cmdDir
+        Copy-Item -LiteralPath $cmdTemplate -Destination $cmdDir
+        Copy-Item -LiteralPath $dll -Destination $cmdDir
+        # Only the file name matters to the script, so an empty stand-in is enough.
+        $dummy   = Join-Path $cmdDir 'NVCleanstall_9.9.9.exe'
+        $renamed = $dummy + '.config'
+        # A freshly created .exe in %TEMP% can be held by the antivirus scanner for a moment.
+        foreach ($attempt in 1..5)
+        {
+            try { [IO.File]::WriteAllText($dummy, ''); break }
+            catch { Start-Sleep -Milliseconds 100 }
+        }
+        if (-not (Test-Path -LiteralPath $dummy)) { throw "Could not create $dummy" }
+
+        $out = & cmd /c "`"$cmdDir\install.cmd`" -nopause" 2>&1
+        Check 'install.cmd creates the renamed exe config' (Test-Path -LiteralPath $renamed) "output: $out"
+        Check 'install.cmd exits 0 on success' ($LASTEXITCODE -eq 0) "exit $LASTEXITCODE"
+        Check 'generated config is the shipped template' ((Get-Content -LiteralPath $renamed -Raw) -eq (Get-Content -LiteralPath $cmdTemplate -Raw)) 'contents differ'
+
+        # A config that names the patch without the DLL stops the host from starting,
+        # so the script must refuse instead of writing one.
+        Remove-Item -LiteralPath (Join-Path $cmdDir 'NvcChs.dll') -Force
+        Remove-Item -LiteralPath $renamed -Force
+        $out = & cmd /c "`"$cmdDir\install.cmd`" -nopause" 2>&1
+        Check 'install.cmd refuses without NvcChs.dll' ($LASTEXITCODE -ne 0) "exit $LASTEXITCODE"
+        Check 'install.cmd writes no config without the dll' (-not (Test-Path -LiteralPath $renamed)) "created $renamed"
+        Copy-Item -LiteralPath $dll -Destination $cmdDir
+
+        # A config that is not ours must survive untouched.
+        Remove-Item -LiteralPath $renamed -Force -ErrorAction SilentlyContinue
+        [IO.File]::WriteAllText($renamed, '<configuration><appSettings/></configuration>')
+        $out = & cmd /c "`"$cmdDir\install.cmd`" -nopause" 2>&1
+        $kept = (Get-Content -LiteralPath $renamed -Raw) -match 'appSettings'
+        Check 'install.cmd leaves an unrelated config alone' $kept "output: $out"
+        Check 'install.cmd still exits 0 when skipping' ($LASTEXITCODE -eq 0) "exit $LASTEXITCODE"
+
+        # Finding no exe is an error, not a silent no-op.
+        Remove-Item -LiteralPath $dummy -Force
+        $out = & cmd /c "`"$cmdDir\install.cmd`" -nopause" 2>&1
+        Check 'install.cmd fails when no exe is present' ($LASTEXITCODE -ne 0) "exit $LASTEXITCODE"
+    }
+    finally { Remove-Item -LiteralPath $cmdDir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 finally
 {

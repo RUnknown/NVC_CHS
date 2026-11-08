@@ -17,6 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Build and test (diagnostics variant)
+        shell: powershell
+        run: .\build.ps1 -SkipHostCheck -Diagnostics
+
       - name: Build and test
         shell: powershell
         run: .\build.ps1 -SkipHostCheck
