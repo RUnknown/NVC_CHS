@@ -1,5 +1,10 @@
 # Build NvcChs.dll with the .NET Framework 4.x C# compiler; no WPF references.
 # The CLR resolves AppDomainManager assemblies from the appbase, hence output next to the exe.
+# -SkipHostCheck lets CI build without the NVCleanstall.exe host present.
+param(
+    [switch] $SkipHostCheck
+)
+
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $app  = Split-Path -Parent $here
@@ -9,9 +14,9 @@ $out  = Join-Path $app 'NvcChs.dll'
 
 if (-not (Test-Path -LiteralPath $csc)) { throw "csc.exe not found: $csc" }
 if (-not (Test-Path -LiteralPath $src)) { throw "source not found: $src" }
-if (-not (Test-Path -LiteralPath (Join-Path $app 'NVCleanstall.exe')))
+if (-not $SkipHostCheck -and -not (Test-Path -LiteralPath (Join-Path $app 'NVCleanstall.exe')))
 {
-    throw "NVCleanstall.exe not found next to output path: $app"
+    throw "NVCleanstall.exe not found next to output path: $app (use -SkipHostCheck for CI builds)"
 }
 
 $outArg = '/out:' + $out
