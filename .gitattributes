@@ -1,0 +1,23 @@
+# LF in the repository and in the working tree on every platform.
+* text=auto eol=lf
+
+*.cs        text eol=lf
+*.ps1       text eol=lf
+*.config    text eol=lf
+*.txt       text eol=lf
+*.md        text eol=lf
+*.xml       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# A `*prefix=` dictionary key may legitimately end with a space, e.g.
+# "*Copying installer files ". Keep git diff --check quiet for that file.
+zh-CN.txt   whitespace=-trailing-space
+
+# Never normalise or diff binaries as text.
+*.dll  binary
+*.exe  binary
+*.pdb  binary
+*.zip  binary
+*.png  binary
+*.jpg  binary

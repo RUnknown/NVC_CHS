@@ -1,0 +1,160 @@
+# NVC_CHS 词典：英文原文=中文
+# UTF-8 无 BOM / LF。每行一条，# 与 ; 开头为注释。
+# 语法：
+#   key=value              精确匹配；key/value 均支持 \n \r \t \\ 转义
+#   *prefix=value          前缀匹配；未匹配的后缀（速度、数值）原样保留
+#
+# 版权：key 为 NVCleanstall 运行时界面字符串的观察记录，value 为其中文译文；
+#   相关权利归 TechPowerUp 及各原权利人所有。本文件不主张权利、不授予再分发许可，
+#   仅收录界面本地化所必需的通用文本；详见 README.md「第三方内容与商标」。
+#
+# 去敏：seen.txt / missing.txt 含本机显卡型号、设备 ID、驱动版本等运行时数据，
+#   补词时只取通用界面文本，切勿把设备信息、本机路径或账号写入本文件。
+#
+# 有意不译：版本号、驱动文件名、显卡型号、窗口标题、DCH:/Studio:/Radio、
+#   组件专有名（PhysX、NV Container、ShadowPlay、GeForce Experience…）
+
+# ---- 第一页：选择驱动版本 ----
+(slower, bypass Cloudflare content delivery network in problem areas)=（较慢，可绕过问题地区的 Cloudflare 内容分发网络）
+(without contacting NVIDIA servers)=（不连接 NVIDIA 服务器）
+64-Bit:=64 位：
+Back=返回
+Browse...=浏览...
+Current Driver:=当前驱动：
+Download=下载
+Graphics Hardware:=显卡硬件：
+Install best driver for my hardware=为我的硬件安装最佳驱动
+Loading...=加载中...
+Manually select a driver version=手动选择驱动版本
+Mobile:=移动版：
+NVCleanstall is blocking automatic driver updates while running, you may go online now.=NVCleanstall 运行期间正在阻止驱动自动更新，现在可以联网。
+New NVCleanstall version available:=发现 NVCleanstall 新版本：
+Next=下一步
+No=否
+Periodically check for driver updates in background=在后台定期检查驱动更新
+Refresh=刷新
+Reinstall NVCleanstall on this machine=在这台电脑上重新安装 NVCleanstall
+Select Driver Version To Install=选择要安装的驱动版本
+Show all versions=显示全部版本
+Trademarks used are properties=所用商标归
+Use driver files on disk=使用磁盘上的驱动文件
+Use fallback servers=使用备用服务器
+What's new=更新内容
+Yes=是
+of their respective owners=其各自所有者所有
+
+# ---- 第二页：选择组件（页面框架与列表） ----
+All=全部
+Cancel=取消
+Display Driver=显示驱动
+Display Driver (required)=显示驱动（必需）
+HD Audio via HDMI=HDMI 高清音频
+Legacy Control Panel=旧版控制面板
+Microsoft Visual C 2017 Runtimes=Microsoft Visual C 2017 运行库
+Minimum=最小
+Recommended=推荐
+Requires:=需要：
+Select Components To Install=选择要安装的组件
+Select components in the list, to get more info about them, what they do, and how they can be useful for you.=在列表中选择组件，可查看其详细信息、作用，以及它对你有什么帮助。
+Telemetry=遥测
+USB-C Driver=USB-C 驱动
+Virtual Audio=虚拟音频
+
+# ---- 第二页：组件说明整段（\n\n 为段落分隔） ----
+If you want to send audio over HDMI or DisplayPort, for example to a connected TV, then this component is required.\n\nIt is not required to have in-game audio through a sound card or your motherboard's audio outputs.=如果想通过 HDMI 或 DisplayPort 输出音频（例如连接电视），则需要此组件。\n\n通过声卡或主板音频输出获得游戏内声音，并不需要此组件。
+ShadowPlay lets you record, share and stream gameplay. It also has an instant replay feature.\n\nHardware requirements are lower than other technologies because it uses an optimized capture and encoding path with hardware-acceleration.=ShadowPlay 可让你录制、分享并直播游戏画面，还带即时回放功能。\n\n由于采用硬件加速的优化采集与编码路径，它对硬件的要求低于其他技术方案。
+This component enhances the Windows built-in multi-monitor support by adding multiple virtual desktops, to which you can assign applications, and quickly switch between desktops.\n\nNVIDIA Quadro View can only be installed on professional cards like Quadro or NVS.=此组件通过增加多个虚拟桌面来增强 Windows 自带的多显示器支持，你可以为虚拟桌面分配应用并在它们之间快速切换。\n\nNVIDIA Quadro View 只能安装在 Quadro 或 NVS 等专业显卡上。
+This component is required for the graphics card to function.\n\nIt provides the low-level capability needed by Windows to recognize the card and display output on it.=此组件是显卡正常工作所必需的。\n\n它提供 Windows 识别显卡并在其上输出画面所需的底层能力。
+This component provides services for other (non-essential) components to use.\nFor example crash reporting and telemetry uses the networking capabilities provided by NV Container.\n\nUnless you plan on installing NvApp, GeForce Experience or Telemetry, this is not needed.=此组件为其他非必要组件提供服务。\n例如，崩溃报告与遥测功能会使用 NV Container 提供的网络能力。\n\n除非你打算安装 NvApp、GeForce Experience 或遥测组件，否则不需要此项。
+This is the older NVIDIA control panel, that's accessible via right-click on your desktop. It works standalone, without any other components.\n\nWhen you install the NVIDIA App, this component is required to provide game profile support, otherwise you will see an 'unable to retrieve settings' error.=这是旧版 NVIDIA 控制面板，可通过桌面右键访问。它独立运行，不依赖其他组件。\n\n安装 NVIDIA App 时需要此组件来提供游戏配置文件支持，否则会出现“无法检索设置”错误。
+NVIDIA FrameView is an application for measuring framerates, frame times, power, and performance-per-watt on a wide range of graphics cards.\n\nThe NVIDIA App uses FrameView to get the sensor data for display in the in-game overlay. Without this component, the overlay will not show any data. MSI Afterburner overlay is a good alternative.=NVIDIA FrameView 是一款用于测量多种显卡的帧率、帧时间、功耗与每瓦性能的工具。\n\nNVIDIA App 使用 FrameView 获取传感器数据以显示在游戏内叠加层。没有此组件，叠加层将不显示任何数据。MSI Afterburner 的叠加层是个不错的替代方案。
+Telemetry sends collected data from your system to NVIDIA, so they can improve their products and services.\n\nAccording to NVIDIA, the data contains hardware and software configuration, games (including settings, usage, and how well they run), feature usage, and your geographical region.=遥测功能会把从你的系统收集的数据发送给 NVIDIA，以便他们改进产品与服务。\n\n据 NVIDIA 说明，这些数据包含软硬件配置、游戏（含设置、使用情况与运行表现）、功能使用情况以及你所在的地理区域。
+This component adds GPU power management support for notebooks. It enables dynamic boost and configurable TDP, and is required for proper operation of all GeForce RTX 30 laptop GPUs and newer.\n\nIf you don't install it, the NVIDIA GPU will fallback to a low-power mode.=此组件为笔记本增加 GPU 电源管理支持。它启用 Dynamic Boost 与可配置 TDP，是 GeForce RTX 30 及更新笔记本 GPU 正常工作所必需的。\n\n如果不安装，NVIDIA GPU 将回退到低功耗模式。
+This components adds support for the on-board USB-C output of some GeForce 20 (Turing) graphics cards.\n\nIf you don't have a Turing graphics card, or don't plan to use the USB-C port, then this isn't needed.=此组件增加对部分 GeForce 20（Turing）显卡板载 USB-C 输出的支持。\n\n如果你没有 Turing 架构显卡，也不打算使用 USB-C 接口，则不需要此组件。
+This package provides audio recording capability for ShadowPlay\n\nOnly install this if you want to record gameplay using ShadowPlay.=此包为 ShadowPlay 提供音频录制能力。\n\n只有想用 ShadowPlay 录制游戏画面时才需要安装。
+NVIDIA PhysX is a software library for games to simulate physical interaction between objects.\n\nOnly few games support this technology nowadays, most games come with their own implementation of physics simulation.=NVIDIA PhysX 是供游戏模拟物体间物理交互的软件库。\n\n如今支持这项技术的游戏已不多，多数游戏自带物理模拟实现。
+
+# ---- 第二页：独立说明句 ----
+For example crash reporting and telemetry uses the networking capabilities provided by NV Container.=例如，崩溃报告与遥测功能会使用 NV Container 提供的网络能力。
+Hardware requirements are lower than other technologies because it uses an optimized capture and encoding path with hardware-acceleration.=由于采用硬件加速的优化采集与编码路径，它对硬件的要求低于其他技术方案。
+If you don't have a Turing graphics card, or don't plan to use the USB-C port, then this isn't needed.=如果你没有 Turing 架构显卡，也不打算使用 USB-C 接口，则不需要此组件。
+If you don't install it, the NVIDIA GPU will fallback to a low-power mode.=如果不安装，NVIDIA GPU 将回退到低功耗模式。
+If you want to send audio over HDMI or DisplayPort, for example to a connected TV, then this component is required.=如果想通过 HDMI 或 DisplayPort 输出音频（例如连接电视），则需要此组件。
+In order to communicate with the driver backend, NVIDIA App uses this messaging system, which is used to transport data between processes.=为与驱动后端通信，NVIDIA App 使用这套消息系统，用于在进程之间传递数据。
+It is not required to have in-game audio through a sound card or your motherboard's audio outputs.=通过声卡或主板音频输出获得游戏内声音，并不需要此组件。
+It provides the low-level capability needed by Windows to recognize the card and display output on it.=它提供 Windows 识别显卡并在其上输出画面所需的底层能力。
+NVIDIA App is the company's new control panel, which replaces GeForce Experience. It works without login requirement and combines features from the classic control panel, like monitor settings with capabilities from GeForce Experience, like ShadowPlay recording and game settings optimization.=NVIDIA App 是 NVIDIA 的新版控制面板，用于取代 GeForce Experience。它无需登录，并结合了经典控制面板的显示器设置等功能，以及 GeForce Experience 的 ShadowPlay 录制与游戏设置优化等能力。
+NVIDIA NGX DLISR is used for Image Super Resolution. It can increase the resolution of an image by 2, 4 or 8 times using deep learning inference to generate additional pixels. No idea why this is included with the driver and what it is actually used for.=NVIDIA NGX DLISR 用于图像超分辨率。它通过深度学习推理生成额外像素，可将图像分辨率提升 2、4 或 8 倍。不清楚为何它会随驱动提供、实际用途是什么。
+NVIDIA PhysX is a software library for games to simulate physical interaction between objects.=NVIDIA PhysX 是供游戏模拟物体间物理交互的软件库。
+NVIDIA Quadro View can only be installed on professional cards like Quadro or NVS.=NVIDIA Quadro View 只能安装在 Quadro 或 NVS 等专业显卡上。
+Only install this if you want to record gameplay using ShadowPlay.=只有想用 ShadowPlay 录制游戏画面时才需要安装。
+Some optional NVIDIA components require these runtimes, they are usually already installed on your system because a lot of other applications depend on them too.=部分可选 NVIDIA 组件需要这些运行库；由于许多其他程序也依赖它们，系统中通常已经安装。
+Some optional NVIDIA components require these runtimes, they are usually already installed on your system because a lot of other applications depend on them too.\n\nThe runtimes are not required for the Display Driver component.=部分可选 NVIDIA 组件需要这些运行库；由于许多其他程序也依赖它们，系统中通常已经安装。\n\n显示驱动组件不需要这些运行库。
+The Platform Controllers package is not needed for desktop computers.=台式机不需要 Platform Controllers 包。
+The runtimes are not required for the Display Driver component.=显示驱动组件不需要这些运行库。
+This component contains the game detection library for GeForce Experience, so it can automatically add games you play to GFE, with proper titles, icon and profile optimization info.=此组件包含 GeForce Experience 的游戏检测库，可自动把你玩过的游戏加入 GFE，并附带正确的标题、图标与配置文件优化信息。
+This component provides services for other (non-essential) components to use.=此组件为其他非必要组件提供服务。
+Unless you plan on installing NvApp, GeForce Experience or Telemetry, this is not needed.=除非你打算安装 NvApp、GeForce Experience 或遥测组件，否则不需要此项。
+When you install the NVIDIA App, this component is required to provide game profile support, otherwise you will see an 'unable to retrieve settings' error.=安装 NVIDIA App 时需要此组件来提供游戏配置文件支持，否则会出现“无法检索设置”错误。
+NVIDIA FrameView is an application for measuring framerates, frame times, power, and performance-per-watt on a wide range of graphics cards.=NVIDIA FrameView 是一款用于测量多种显卡的帧率、帧时间、功耗与每瓦性能的工具。
+The NVIDIA App uses FrameView to get the sensor data for display in the in-game overlay. Without this component, the overlay will not show any data. MSI Afterburner overlay is a good alternative.=NVIDIA App 使用 FrameView 获取传感器数据以显示在游戏内叠加层。没有此组件，叠加层将不显示任何数据。MSI Afterburner 的叠加层是个不错的替代方案。
+ShadowPlay lets you record, share and stream gameplay. It also has an instant replay feature.=ShadowPlay 可让你录制、分享并直播游戏画面，还带即时回放功能。
+Telemetry sends collected data from your system to NVIDIA, so they can improve their products and services.=遥测功能会把从你的系统收集的数据发送给 NVIDIA，以便他们改进产品与服务。
+This component adds GPU power management support for notebooks. It enables dynamic boost and configurable TDP, and is required for proper operation of all GeForce RTX 30 laptop GPUs and newer.=此组件为笔记本增加 GPU 电源管理支持。它启用 Dynamic Boost 与可配置 TDP，是 GeForce RTX 30 及更新笔记本 GPU 正常工作所必需的。
+This component enhances the Windows built-in multi-monitor support by adding multiple virtual desktops, to which you can assign applications, and quickly switch between desktops.=此组件通过增加多个虚拟桌面来增强 Windows 自带的多显示器支持，你可以为虚拟桌面分配应用并在它们之间快速切换。
+This component is required for the graphics card to function.=此组件是显卡正常工作所必需的。
+This components adds support for the on-board USB-C output of some GeForce 20 (Turing) graphics cards.=此组件增加对部分 GeForce 20（Turing）显卡板载 USB-C 输出的支持。
+This is the older NVIDIA control panel, that's accessible via right-click on your desktop. It works standalone, without any other components.=这是旧版 NVIDIA 控制面板，可通过桌面右键访问。它独立运行，不依赖其他组件。
+This package provides audio recording capability for ShadowPlay=此包为 ShadowPlay 提供音频录制能力。
+Only few games support this technology nowadays, most games come with their own implementation of physics simulation.=如今支持这项技术的游戏已不多，多数游戏自带物理模拟实现。
+
+# ---- 第二页：Run 分片（按拼接顺序逐片对应，保证拼起来通顺） ----
+ for the graphics card to function.=，显卡才能正常工作。
+ from your system to NVIDIA, so they can improve their products and services.= 发送给 NVIDIA，以便他们改进产品与服务。
+ like Quadro or NVS.= 如 Quadro 或 NVS。
+ output of some GeForce 20 (Turing) graphics cards.= 输出的支持。
+ uses FrameView to get the sensor data for display in the in-game overlay. Without this component, the overlay will not show any data. MSI Afterburner overlay is a good alternative.= 使用 FrameView 获取传感器数据以显示在游戏内叠加层。没有此组件，叠加层将不显示任何数据。MSI Afterburner 的叠加层是个不错的替代方案。
+, frame times, power, and performance-per-watt on a wide range of graphics cards.=、帧时间、功耗与多种显卡的每瓦性能。
+, that's accessible via right-click on your desktop. It works standalone, without any other components.=，可通过桌面右键访问。它独立运行，不依赖其他组件。
+, then this component is required.=，则需要此组件。
+, this component is required to provide game profile support, otherwise you will see an 'unable to retrieve settings' error.= 时，需要此组件提供游戏配置文件支持，否则会出现“无法检索设置”错误。
+, to which you can assign applications, and quickly switch between desktops.=，可为虚拟桌面分配应用并在它们之间快速切换。
+. It also has an instant replay feature.=，还带即时回放功能。
+. It enables dynamic boost and configurable TDP, and is required for proper operation of all GeForce RTX 30 laptop GPUs and newer.=，支持 Dynamic Boost 与可配置 TDP，是 GeForce RTX 30 及更新笔记本 GPU 正常工作所必需的。
+According to NVIDIA, the data contains hardware and software configuration, games (including settings, usage, and how well they run), feature usage, and your geographical region.=据 NVIDIA 说明，这些数据包含软硬件配置、游戏（含设置、使用情况与运行表现）、功能使用情况以及你所在的地理区域。
+If you want to send audio over HDMI or DisplayPort, for example to a=如果想通过 HDMI 或 DisplayPort 输出音频，例如连接
+NVIDIA FrameView is an application=NVIDIA FrameView 是一款用于测量
+NVIDIA Quadro View can only be installed on=NVIDIA Quadro View 只能安装在
+Only few games support this technology nowadays, most games come with their own implementation of=如今支持这项技术的游戏已不多，多数游戏自带
+ShadowPlay lets you=ShadowPlay 可让你
+Telemetry sends=遥测功能会把
+Process Monitor=进程监视器
+The=
+The Platform Controllers package is=台式机
+This component adds GPU power management support for=此组件为
+This component enhances the Windows built-in multi-monitor support by adding multiple=此组件通过增加多个
+This component is=此组件是
+This components adds support for the on-board=此组件增加对部分 GeForce 20（Turing）显卡板载
+This is the older NVIDIA=这是旧版 NVIDIA
+This package provides=此包提供
+USB-C=USB-C
+When you install the=安装
+audio recording capability for ShadowPlay=ShadowPlay 的音频录制能力
+collected data=收集的数据
+connected TV=电视
+control panel=控制面板
+for measuring framerates=帧率
+not needed for desktop computers=不需要 Platform Controllers 包。
+notebooks=笔记本增加 GPU 电源管理支持
+physics simulation=物理模拟实现
+professional cards=专业显卡
+record, share and stream gameplay=录制、分享并直播游戏画面
+required=必需的
+virtual desktops=虚拟桌面
+
+# ---- 第三页及后续：下载 / 解压 / 安装进度 ----
+Preparing=正在准备
+Preparing Sources=正在准备源文件
+Setup=安装
+Setup (decompress)=安装（解压）
+*Copying installer files =正在复制安装文件 

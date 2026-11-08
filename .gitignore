@@ -1,0 +1,29 @@
+# Runtime diagnostics written by NvcChs.dll into this directory.
+# Machine-local, overwritten on every run, and may contain the local GPU model,
+# device id and driver version. Never commit or bundle these files.
+/seen.txt
+/missing.txt
+/status.txt
+/error.log
+
+# Build output. NvcChs.dll is emitted into the parent install directory;
+# keep binaries out of the repository wherever they appear.
+*.dll
+*.pdb
+*.exe
+*.cache
+bin/
+obj/
+
+# Windows shell noise
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

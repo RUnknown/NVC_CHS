@@ -1,0 +1,161 @@
+# NVC_CHS
+
+![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![Runtime](https://img.shields.io/badge/.NET%20Framework-4.x-blueviolet)
+![Shell](https://img.shields.io/badge/shell-Windows%20PowerShell%205.1-lightgrey)
+![License](https://img.shields.io/badge/license-All%20rights%20reserved-red)
+
+给 [NVCleanstall](https://www.techpowerup.com/download/techpowerup-nvcleanstall/) 加简体中文界面的非侵入式补丁。
+通过 .NET 的 `AppDomainManager` 机制在程序入口之前加载，再用反射遍历 WPF 界面树替换文本；
+**不修改、不重打包 `NVCleanstall.exe`**，原程序签名保持不变，随时可完整回退。
+
+## 功能特性
+
+- **非侵入**：不改宿主程序一个字节，配置与补丁 DLL 均可一键回滚。
+- **低开销**：订阅 `LayoutUpdated`，界面有变化才扫描（10 ms 唤醒、1 s 定时兜底），空闲时零遍历。
+- **热重载**：`zh-CN.txt` 每秒检查时间戳，改完保存即生效，无需重启程序；文件被编辑器短暂锁住时保留旧词典并在下次重试。
+- **两种匹配**：精确匹配与 `*prefix=` 前缀匹配（最长优先），动态数值等后缀原样保留。
+- **自带回归测试**：`build.ps1` 编译后自动运行 13 项 WPF 检查。
+
+## 目录
+
+- [功能特性](#功能特性)
+- [背景](#背景)
+- [快速开始](#快速开始)
+- [使用说明](#使用说明)
+- [词典格式](#词典格式)
+- [补全词条](#补全词条)
+- [目录结构](#目录结构)
+- [隐私与分享前检查](#隐私与分享前检查)
+- [常见问题](#常见问题)
+- [第三方内容与商标](#第三方内容与商标)
+- [致谢](#致谢)
+
+## 背景
+
+NVCleanstall 是 TechPowerUp 出品的 NVIDIA 驱动精简安装工具，官方没有中文界面。
+本仓库为它做了一个个人本地化补丁，目标有三条：不动宿主程序、开销可忽略、随时可回退。
+词典按 **v1.19.0** 的界面文本编写；上游更新后按「补全词条」流程增量维护即可。
+
+## 快速开始
+
+环境要求：
+
+- Windows x64 与 .NET Framework 4.x（编译使用系统自带的 `C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe`）；
+- `powershell.exe`（Windows PowerShell 5.1）；`test.ps1` 需要 WPF 与 STA，`pwsh` 7 不支持；
+- 已安装 NVCleanstall，且**本仓库目录需位于其安装目录内**（脚本依赖这个位置关系）；
+- 安装目录在 `C:\Program Files` 下时，构建与部署需要管理员权限。
+
+```powershell
+git clone <仓库地址> NVC_CHS   # 放进 NVCleanstall 安装目录
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1    # 编译 + 回归测试
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1   # 启用汉化
+```
+
+## 使用说明
+
+| 命令 | 作用 |
+| --- | --- |
+| `.\build.ps1` | 编译 `NvcChs.dll` 到上一级（exe 同级），并自动运行 `test.ps1` |
+| `.\deploy.ps1` | 启用汉化：把配置模板复制到 exe 同级目录（依赖 `build.ps1` 的产物） |
+| `.\deploy.ps1 -Status` | 查看 exe 哈希、签名与补丁文件状态 |
+| `.\deploy.ps1 -Rollback` | 回滚：删除配置与补丁 DLL，不触碰 exe |
+
+细节：
+
+- `build.ps1` 会检查程序集版本是否为 `1.0.0.0`（与配置模板里的 `appDomainManagerAssembly` 绑定一致）；
+  若修改 `AssemblyVersion`，需同步更新配置模板。
+- `deploy.ps1` 遇到已存在且不含 `appDomainManagerType` 的其它配置时会拒绝覆盖，不碰无关文件。
+- 回滚只删除配置与 DLL，`NVCleanstall.exe` 从未被修改。
+
+## 词典格式
+
+`zh-CN.txt` 为 UTF-8 无 BOM、LF 行尾，每行一条；`#` 或 `;` 开头为注释：
+
+```text
+key=value          精确匹配
+*prefix=value      前缀匹配，未匹配的后缀原样保留
+```
+
+- key 与 value 都支持 `\n`、`\r`、`\t`、`\\` 转义（界面里的 CRLF 按 `\n` 匹配）；
+- 前缀规则的尾部空格是有意义的，不要修剪。
+
+## 补全词条
+
+启动程序并走完各个页面后，查看运行时生成的 `missing.txt`（未命中的界面文本）与 `seen.txt`（已见文本），
+把需要的行复制进 `zh-CN.txt` 并补上 `=译文`，保存即生效。
+
+**只取通用界面文本**：这两个文件会混入本机显卡型号与设备 ID、驱动版本号、软件版本等运行时数据，
+写进词典就等于把设备信息公开提交。
+
+有意不译：版本号、驱动文件名、显卡型号、窗口标题、组件专有名（PhysX、NV Container、ShadowPlay、GeForce Experience 等）。
+
+## 目录结构
+
+```text
+NVC_CHS/
+├── src/NvcChsManager.cs      AppDomainManager + WPF 反射扫描（NvcChs.NvcChsManager）
+├── zh-CN.txt                 词典（UTF-8 无 BOM）
+├── NVCleanstall.exe.config   部署用的配置模板
+├── build.ps1                 编译并运行回归测试
+├── deploy.ps1                启用 / 查看状态 / 回滚
+├── tests/test.ps1            WPF 回归测试（build.ps1 自动调用）
+└── seen.txt / missing.txt / status.txt / error.log
+                              运行时诊断文件，不入库（见 .gitignore）
+```
+
+`build.ps1` 与 `deploy.ps1` 假定本目录位于 NVCleanstall 安装目录内：
+编译产物 `NvcChs.dll` 与部署的配置都写到上一级（exe 同级）。本仓库不包含宿主程序的任何文件。
+
+## 隐私与分享前检查
+
+`seen.txt`、`missing.txt`、`status.txt`、`error.log` 记录本机运行时的界面文本与统计，
+可能包含显卡型号、设备 ID、驱动版本、软件版本等可识别设备的信息。
+它们由程序自动覆盖，已被 `.gitignore` 排除，**不会进入提交或 `git push`**；
+但压缩整个目录、上传截图、复制文件夹分享时会一并带出。分享前删除
+（程序下次启动会重新生成，不影响使用）：
+
+```powershell
+Remove-Item .\seen.txt, .\missing.txt, .\status.txt, .\error.log -ErrorAction SilentlyContinue
+```
+
+词典 `zh-CN.txt` 本身只收录通用界面文本，不含任何本机硬件、路径或账号信息。
+
+通过 issue 反馈问题时，同样不要粘贴上述运行时文件的内容。
+
+## 常见问题
+
+**为什么有些文字还是英文？**
+词典尚未覆盖。运行程序、走完对应页面后查看 `missing.txt`，按[补全词条](#补全词条)流程补充即可；
+未命中的文本保持英文，不会报错。
+
+**为什么版本号和驱动文件名不翻译？**
+有意不译：这些是动态字符串，翻译会破坏匹配并造成歧义，保持原文更安全。
+
+**上游 NVCleanstall 更新后补丁还能用吗？**
+界面文案没变就能用，变了就补词典。若上游改为 .NET (Core) 或自包含部署，
+本方案（依赖 .NET Framework WPF 反射）需要重做。
+
+**修改 `zh-CN.txt` 后需要重启程序吗？**
+不需要，保存即热重载。
+
+**会影响 NVCleanstall 本身吗？**
+exe 一个字节都不会被修改，签名保持不变；`deploy.ps1 -Rollback` 可完整回退。
+
+## 第三方内容与商标
+
+- 本仓库**不包含** NVCleanstall 的可执行文件、程序集、资源文件或源代码，也不包含任何 NVIDIA 驱动包内容。
+- `zh-CN.txt` 中 `=` 左侧的英文文本是对 NVCleanstall 运行中界面字符串的观察记录，右侧中文为其译文（演绎）。
+  相关权利归 TechPowerUp 及各原权利人所有；本仓库不主张这些文本的任何权利，也不授予第三方使用它们的权利，
+  收录范围仅限实现界面本地化所必需的通用界面字符串，不含帮助文档、图标或驱动文件内容。
+- `NVCleanstall`、`NVIDIA`、`GeForce`、`PhysX` 等名称与商标归各自权利人所有，此处仅用于指代，
+  不表示关联、授权或背书。本项目为个人本地化用途的非官方作品，与 TechPowerUp / NVIDIA 无关联。
+- 使用前请确保已合法取得 NVCleanstall 副本并遵守其许可条款；本补丁按「原样」提供，不提供任何担保。
+- 若权利人认为相关内容不当，请通过 issue 提出，将及时移除。
+
+## 致谢
+
+- [NVCleanstall](https://www.techpowerup.com/download/techpowerup-nvcleanstall/)：本项目的本地化对象，由 TechPowerUp 开发。
+- 徽章由 [shields.io](https://shields.io) 生成。
+
+问题或建议请通过 GitHub Issues 提出。
