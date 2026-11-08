@@ -10,6 +10,7 @@ if ($PSVersionTable.PSVersion.Major -ge 6)
 Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repo = Split-Path -Parent $here
@@ -79,6 +80,31 @@ try
     $fresh.Invoke($null, $null)
     $v = $tr.Invoke($null, @('Gamma'))
     Check 'reload retries once the file is readable' ($v -eq 'CCC') "Translate(Gamma) returned [$v]"
+
+    # ---- an absent dictionary must not look like a healthy untranslated session ----
+    $absent = Join-Path $env:TEMP ('nvcchs-absent-' + [guid]::NewGuid().ToString('N') + '.txt')
+    try
+    {
+        SetField '_dictPath' $absent
+        SetField '_dictStamp' ([datetime]::MinValue)
+        SetField '_lastError' ''
+        $type.GetField('RecordedOnce', $f).GetValue($null).Clear()
+        $fresh.Invoke($null, $null)
+
+        $err = GetField '_lastError'
+        Check 'missing dictionary is reported' ($err -like 'DICT_MISSING*') "_lastError is [$err]"
+
+        # Reporting it must not disable the hot reload that lets a user drop it in later.
+        [IO.File]::WriteAllText($absent, "Delta=DDD`r`n", $utf8)
+        $fresh.Invoke($null, $null)
+        $v = $tr.Invoke($null, @('Delta'))
+        Check 'dictionary added later still loads' ($v -eq 'DDD') "Translate(Delta) returned [$v]"
+    }
+    finally
+    {
+        Remove-Item -LiteralPath $absent -ErrorAction SilentlyContinue
+        SetField '_dictPath' $tmp
+    }
 
     # ---- every Run of one paragraph must be translated in a single pass ----
     [IO.File]::WriteAllText($tmp, "Alpha=AAA`r`n", $utf8)
@@ -166,6 +192,43 @@ try
         }
     }
     Check 'dictionary escape round-trip' ($bad.Count -eq 0) "$($bad.Count) line(s) do not round-trip"
+
+    # ---- the release zip must be a complete, extract-and-run install ----
+    # The DLL reads its dictionary from <appbase>\NVC_CHS, so the zip has to carry
+    # that subdir. A dictionary at the zip root still leaves the install untranslated.
+    $pack = Join-Path $repo 'package.ps1'
+    if (-not (Test-Path -LiteralPath $pack)) { throw "package.ps1 not found: $pack" }
+    $zip = Join-Path $env:TEMP ('nvcchs-pack-' + [guid]::NewGuid().ToString('N') + '.zip')
+    try
+    {
+        $packOut = & $pack -OutputPath $zip 2>&1
+        if (-not (Test-Path -LiteralPath $zip)) { throw "package.ps1 produced no zip: $packOut" }
+
+        # CI and maintainers repackage over an existing zip; a fresh temp path per run
+        # would hide a failure to overwrite.
+        $repackOk = $true
+        try { & $pack -OutputPath $zip 2>&1 | Out-Null } catch { $repackOk = $false }
+        Check 'packaging overwrites an existing zip' $repackOk 'second run threw'
+
+        $archive = [IO.Compression.ZipFile]::OpenRead($zip)
+        try
+        {
+            $raw = @($archive.Entries | ForEach-Object { $_.FullName })
+            # The ZIP spec requires forward slashes. Compress-Archive on PowerShell 5.1
+            # writes backslashes, which some extractors turn into a literal filename
+            # instead of the NVC_CHS subdir -- the dictionary then never gets found.
+            $badSep = @($raw | Where-Object { $_.Contains('\') })
+            Check 'release zip entry paths use forward slashes' ($badSep.Count -eq 0) "backslash entries: $($badSep -join ', ')"
+
+            $entries = @($raw | ForEach-Object { $_.Replace('\', '/') })
+            foreach ($required in @('NvcChs.dll', 'NVCleanstall.exe.config', 'NVC_CHS/zh-CN.txt'))
+            {
+                Check "release zip contains $required" ($entries -contains $required) "entries: $($entries -join ', ')"
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue }
 }
 finally
 {

@@ -15,21 +15,25 @@
 - **低开销**：订阅 `LayoutUpdated`，界面有变化才扫描（10 ms 唤醒、1 s 定时兜底），空闲时零遍历。
 - **热重载**：`zh-CN.txt` 每秒检查时间戳，改完保存即生效，无需重启程序；文件被编辑器短暂锁住时保留旧词典并在下次重试。
 - **两种匹配**：精确匹配与 `*prefix=` 前缀匹配（最长优先），动态数值等后缀原样保留。
-- **自带回归测试**：`build.ps1` 编译后自动运行 13 项 WPF 检查。
+- **自带回归测试**：`build.ps1` 编译后自动运行回归检查（词典解析、WPF 遍历、发布包完整性）。
 
 ## 目录
 
-- [功能特性](#功能特性)
-- [背景](#背景)
-- [快速开始](#快速开始)
-- [使用说明](#使用说明)
-- [词典格式](#词典格式)
-- [补全词条](#补全词条)
-- [目录结构](#目录结构)
-- [隐私与分享前检查](#隐私与分享前检查)
-- [常见问题](#常见问题)
-- [第三方内容与商标](#第三方内容与商标)
-- [致谢](#致谢)
+- [NVC\_CHS](#nvc_chs)
+  - [功能特性](#功能特性)
+  - [目录](#目录)
+  - [背景](#背景)
+  - [快速开始](#快速开始)
+    - [方式一：下载 Release（无需编译）](#方式一下载-release无需编译)
+    - [方式二：从源码构建](#方式二从源码构建)
+  - [使用说明](#使用说明)
+  - [词典格式](#词典格式)
+  - [补全词条](#补全词条)
+  - [目录结构](#目录结构)
+  - [隐私与分享前检查](#隐私与分享前检查)
+  - [常见问题](#常见问题)
+  - [第三方内容与商标](#第三方内容与商标)
+  - [致谢](#致谢)
 
 ## 背景
 
@@ -38,6 +42,26 @@ NVCleanstall 是 TechPowerUp 出品的 NVIDIA 驱动精简安装工具，官方�
 词典按 **v1.19.0** 的界面文本编写；上游更新后按「补全词条」流程增量维护即可。
 
 ## 快速开始
+
+### 方式一：下载 Release（无需编译）
+
+从 [Releases](https://github.com/RUnknown/NVC_CHS/releases) 下载 `NvcChs.zip`，
+**全部解压到 NVCleanstall 安装目录**（即 `NVCleanstall.exe` 所在目录）。
+压缩包已按安装目录的布局组织，解压即完成安装：
+
+```text
+NVCleanstall.exe             原有文件，一个字节都不会被修改
+NvcChs.dll                   解压得到
+NVCleanstall.exe.config      解压得到
+NVC_CHS/
+└── zh-CN.txt                解压得到；词典必须在这个子目录里
+```
+
+`zh-CN.txt` 只有放在 `NVC_CHS` 子目录中才会被读取，放在 exe 同级无效。
+启动 NVCleanstall 即可看到中文。要回退，删除 `NvcChs.dll`、`NVCleanstall.exe.config`
+与 `NVC_CHS` 目录即可（该目录除词典外只放运行时诊断文件）。
+
+### 方式二：从源码构建
 
 环境要求：
 
@@ -57,6 +81,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1   # 启用�
 | 命令 | 作用 |
 | --- | --- |
 | `.\build.ps1` | 编译 `NvcChs.dll` 到上一级（exe 同级），并自动运行 `test.ps1` |
+| `.\package.ps1` | 打出发布用 `NvcChs.zip`（依赖 `build.ps1` 的产物）；CI 与本地共用同一份清单 |
 | `.\deploy.ps1` | 启用汉化：把配置模板复制到 exe 同级目录（依赖 `build.ps1` 的产物） |
 | `.\deploy.ps1 -Status` | 查看 exe 哈希、签名与补丁文件状态 |
 | `.\deploy.ps1 -Rollback` | 回滚：删除配置与补丁 DLL，不触碰 exe |
@@ -98,8 +123,9 @@ NVC_CHS/
 ├── zh-CN.txt                 词典（UTF-8 无 BOM）
 ├── NVCleanstall.exe.config   部署用的配置模板
 ├── build.ps1                 编译并运行回归测试
+├── package.ps1               按显式清单打出发布用 NvcChs.zip
 ├── deploy.ps1                启用 / 查看状态 / 回滚
-├── tests/test.ps1            WPF 回归测试（build.ps1 自动调用）
+├── tests/test.ps1            词典 / WPF / 发布包回归测试（build.ps1 自动调用）
 └── seen.txt / missing.txt / status.txt / error.log
                               运行时诊断文件，不入库（见 .gitignore）
 ```
@@ -112,6 +138,7 @@ NVC_CHS/
 `seen.txt`、`missing.txt`、`status.txt`、`error.log` 记录本机运行时的界面文本与统计，
 可能包含显卡型号、设备 ID、驱动版本、软件版本等可识别设备的信息。
 它们由程序自动覆盖，已被 `.gitignore` 排除，**不会进入提交或 `git push`**；
+发布包同样不会带上它们——`package.ps1` 按显式清单打包，只含 DLL、config、词典与 README。
 但压缩整个目录、上传截图、复制文件夹分享时会一并带出。分享前删除
 （程序下次启动会重新生成，不影响使用）：
 
@@ -124,6 +151,12 @@ Remove-Item .\seen.txt, .\missing.txt, .\status.txt, .\error.log -ErrorAction Si
 通过 issue 反馈问题时，同样不要粘贴上述运行时文件的内容。
 
 ## 常见问题
+
+**下载 Release 安装后界面还是全英文？**
+先看 `NVC_CHS\error.log`：出现 `DICT_MISSING` 就是词典没找到——它必须在 `NVC_CHS` 子目录里，
+放在 exe 同级无效。再看 `NVC_CHS\status.txt` 的 `dictionary=`，为 `0` 即词典未加载。
+词典也可单独放进该子目录，
+程序每秒检查一次，补上后无需重启即生效。
 
 **为什么有些文字还是英文？**
 词典尚未覆盖。运行程序、走完对应页面后查看 `missing.txt`，按[补全词条](#补全词条)流程补充即可；

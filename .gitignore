@@ -14,6 +14,7 @@
 *.cache
 bin/
 obj/
+/NvcChs.zip
 
 # Windows shell noise
 Thumbs.db

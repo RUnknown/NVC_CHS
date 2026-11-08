@@ -23,13 +23,7 @@ jobs:
 
       - name: Package
         shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item -LiteralPath ..\NvcChs.dll -Destination dist\NvcChs.dll
-          Copy-Item -LiteralPath NVCleanstall.exe.config -Destination dist\
-          Copy-Item -LiteralPath README.md -Destination dist\
-          Compress-Archive -Path dist\* -DestinationPath NvcChs.zip -Force
-          Get-FileHash -LiteralPath NvcChs.zip -Algorithm SHA256
+        run: .\package.ps1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

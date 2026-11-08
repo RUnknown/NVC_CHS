@@ -679,6 +679,9 @@ namespace NvcChs
                             dict[key] = val;
                     }
                 }
+                // Still succeed: the file can be dropped in later, and the stamp
+                // check in EnsureDictionaryFresh reloads it without a restart.
+                else RecordOnce("DICT_MISSING: " + _dictPath);
             }
             catch (Exception e) { RecordOnce("DICT_FAIL: " + e); return false; }
 
