@@ -78,6 +78,8 @@ namespace NvcChs
         private static Type _visualType;
         private static Type _frameworkElementType;
         private static Type _frameworkContentElementType;
+        private static Type _hyperlinkType;
+        private static Type _inlineUiContainerType;
         private static Func<object, object> _enumLocalValues;
         private static Action<object, object, object> _setValue;
         private static Func<object, int> _visualCount;
@@ -89,6 +91,7 @@ namespace NvcChs
         private static Func<object, object> _entryValue;
         private static Func<object, string> _dpName;
         private static Func<object, object> _dpOwnerType;
+        private static Func<object, bool> _dpReadOnly;
         private static PropertyInfo _appCurrent;
         private static PropertyInfo _appWindows;
         private static PropertyInfo _elementDispatcher;
@@ -328,12 +331,17 @@ namespace NvcChs
                 FindType("System.Windows.LogicalTreeHelper"), "GetChildren", 1));
             _dpName = CompileGetter<Func<object, string>>(dpT, "Name");
             _dpOwnerType = CompileGetter<Func<object, object>>(dpT, "OwnerType");
+            // Read-only properties (ComboBox.SelectionBoxItem and friends) throw on
+            // SetValue; asking first is cheaper than one exception per scan.
+            _dpReadOnly = CompileGetter<Func<object, bool>>(dpT, "ReadOnly");
 
             // Element kinds are checked before walking, so a Run or a data item does
             // not cost a thrown exception on every scan.
             _visualType = FindType("System.Windows.Media.Visual");
             _frameworkElementType = FindType("System.Windows.FrameworkElement");
             _frameworkContentElementType = FindType("System.Windows.FrameworkContentElement");
+            _hyperlinkType = FindType("System.Windows.Documents.Hyperlink");
+            _inlineUiContainerType = FindType("System.Windows.Documents.InlineUIContainer");
 
             Type ttT = FindType("System.Windows.Controls.ToolTipService");
             if (ttT != null)
@@ -408,11 +416,9 @@ namespace NvcChs
             }
         }
 
-        // Returns true when this node's logical children are exactly its inlines,
-        // which the caller may then skip.
-        private static bool WalkInlines(object node, HashSet<object> visited, int depth)
+        private static bool TryGetInlines(object node, out IEnumerable inlines)
         {
-            if (depth > 80) return false;
+            inlines = null;
             Type t = node.GetType();
             Func<object, object> get;
             if (!InlinesGetters.TryGetValue(t, out get))
@@ -422,10 +428,40 @@ namespace NvcChs
                 InlinesGetters[t] = get;
             }
             if (get == null) return false;
-
-            IEnumerable inlines;
             try { inlines = get(node) as IEnumerable; } catch { return false; }
-            if (inlines == null) return false;
+            return inlines != null;
+        }
+
+        // A Hyperlink or an embedded control holds content the Text property does not
+        // cover: writing Text rebuilds the InlineCollection and drops it. Runs, spans
+        // and line breaks only carry formatting, so those keep the smoother
+        // whole-paragraph translation through Text.
+        private static bool HasEmbeddedInline(object node, int depth)
+        {
+            if (depth > 10) return true;    // unknown nesting: keep the inlines
+            IEnumerable inlines;
+            if (!TryGetInlines(node, out inlines)) return false;
+            try
+            {
+                foreach (object inline in inlines)
+                {
+                    if (inline == null) return true;
+                    if (_hyperlinkType != null && _hyperlinkType.IsInstanceOfType(inline)) return true;
+                    if (_inlineUiContainerType != null && _inlineUiContainerType.IsInstanceOfType(inline)) return true;
+                    if (HasEmbeddedInline(inline, depth + 1)) return true;
+                }
+            }
+            catch { return true; }
+            return false;
+        }
+
+        // Returns true when this node's logical children are exactly its inlines,
+        // which the caller may then skip.
+        private static bool WalkInlines(object node, HashSet<object> visited, int depth)
+        {
+            if (depth > 80) return false;
+            IEnumerable inlines;
+            if (!TryGetInlines(node, out inlines)) return false;
 
             // Setting a Run's Text invalidates the InlineCollection enumerator, so
             // the nodes are collected first and translated afterwards. Its indexer
@@ -452,6 +488,8 @@ namespace NvcChs
             // Setting a value while enumerating local values invalidates the enumerator.
             // Allocated only when something is actually replaced.
             List<KeyValuePair<object, string>> pending = null;
+            bool inlinesChecked = false;
+            bool embeddedInlines = false;
             while (true)
             {
                 bool more;
@@ -477,6 +515,14 @@ namespace NvcChs
                 catch { continue; }
                 if (dp == null || !(val is string)) continue;
 
+                bool readOnly = false;
+                try
+                {
+                    if (_dpReadOnly != null) readOnly = _dpReadOnly(dp);
+                }
+                catch { }
+                if (readOnly) continue;
+
                 string propName = null;
                 try
                 {
@@ -496,6 +542,18 @@ namespace NvcChs
                     catch { }
                     if (owner != null && (owner.FullName == "System.Windows.FrameworkElement" ||
                         owner.FullName == "System.Windows.FrameworkContentElement")) continue;
+                }
+
+                // Writing Text on an element that also holds a hyperlink rebuilds the
+                // collection and drops it; the inline walk fixes the runs instead.
+                if (propName == "Text")
+                {
+                    if (!inlinesChecked)
+                    {
+                        inlinesChecked = true;
+                        embeddedInlines = HasEmbeddedInline(d, 0);
+                    }
+                    if (embeddedInlines) continue;
                 }
 
                 string original = (string)val;
@@ -613,7 +671,14 @@ namespace NvcChs
         private static bool ContainsCjk(string s)
         {
             foreach (char c in s)
+            {
                 if (c >= '\u3400' && c <= '\u9fff') return true;
+                // CJK punctuation and full-width forms count as localised too, or a
+                // value such as "ID：" is looked up again on every scan and reported
+                // as missing even though it came from the dictionary.
+                if (c >= '\u3000' && c <= '\u303f') return true;
+                if (c >= '\uff00' && c <= '\uffef') return true;
+            }
             return false;
         }
 

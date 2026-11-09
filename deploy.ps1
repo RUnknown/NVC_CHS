@@ -72,6 +72,15 @@ foreach ($e in $exes)
     "Installed config : $c"
 }
 
+# The exe-level dictionary wins over NVC_CHS\zh-CN.txt. Refreshing it here keeps
+# edits to the repository dictionary from being silently shadowed by an old copy.
+$rootDict = Join-Path $app 'zh-CN.txt'
+if (Test-Path -LiteralPath $rootDict)
+{
+    Copy-Item -LiteralPath (Join-Path $here 'zh-CN.txt') -Destination $rootDict -Force
+    "Synced dictionary: $rootDict"
+}
+
 "Payload DLL      : $dll (appbase, no probing required)"
 "Dictionary       : $(Join-Path $app 'zh-CN.txt') or $(Join-Path $here 'zh-CN.txt')"
 foreach ($e in $exes)

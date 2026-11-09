@@ -22,6 +22,14 @@ if (-not $SkipHostCheck -and -not (Test-Path -LiteralPath (Join-Path $app 'NVCle
     throw "NVCleanstall.exe not found next to output path: $app (use -SkipHostCheck for CI builds)"
 }
 
+# A release run cleans the data subdir at startup, so a dump left over from a
+# diagnostics run would be gone before it can be copied into the dictionary.
+$dump = Join-Path $here 'missing.txt'
+if (-not $Diagnostics -and (Test-Path -LiteralPath $dump))
+{
+    Write-Warning "missing.txt from a diagnostics run is still here; the next release launch deletes it. Copy the entries you need into zh-CN.txt first."
+}
+
 $outArg = '/out:' + $out
 $defines = @()
 if ($Diagnostics) { $defines += '/define:DIAGNOSTICS' }

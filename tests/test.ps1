@@ -209,7 +209,7 @@ try
     }
 
     # ---- every Run of one paragraph must be translated in a single pass ----
-    [IO.File]::WriteAllText($tmp, "Alpha=AAA`r`n", $utf8)
+    [IO.File]::WriteAllText($tmp, "Alpha=AAA`r`nLink=LNK`r`n", $utf8)
     SetField '_dictStamp' ([datetime]::MinValue)
     $fresh.Invoke($null, $null)
 
@@ -233,6 +233,54 @@ try
     $type.GetMethod('Walk', $f).Invoke($null, @($panel.PSObject.BaseObject, $visited, 0))
     $done = @($runs | Where-Object { $_.Text -eq 'AAA ' }).Count
     Check 'all inline runs translated in one pass' ($done -eq 6) "translated $done of 6"
+
+    # A hyperlink lives in the InlineCollection, not the visual tree. Translating
+    # the paragraph must not drop it (the app's "let us know" footer).
+    $para = New-Object System.Windows.Controls.TextBlock
+    $paraRun = New-Object System.Windows.Documents.Run 'Alpha '
+    $link = New-Object System.Windows.Documents.Hyperlink
+    $linkRun = New-Object System.Windows.Documents.Run 'Link'
+    [void]$link.Inlines.Add($linkRun)
+    [void]$para.Inlines.Add($paraRun)
+    [void]$para.Inlines.Add($link)
+    $type.GetMethod('Walk', $f).Invoke($null, @($para.PSObject.BaseObject, [System.Collections.Generic.HashSet[object]]::new(), 0))
+    Check 'hyperlink survives translation' ($para.Inlines.Count -eq 2) "inlines: $($para.Inlines.Count)"
+    Check 'run before a hyperlink is translated' ($paraRun.Text -eq 'AAA ') "text is [$($paraRun.Text)]"
+    Check 'run inside a hyperlink is translated' ($linkRun.Text -eq 'LNK') "text is [$($linkRun.Text)]"
+
+    # Only content-bearing inlines force the run-by-run path; plain runs keep the
+    # smoother whole-paragraph Text translation (the components descriptions).
+    $hasEmbedded = $type.GetMethod('HasEmbeddedInline', $f)
+    Check 'hyperlink is an embedded inline' ([bool]$hasEmbedded.Invoke($null, @($para.PSObject.BaseObject, 0)))
+    $plainRoot = New-Object System.Windows.Controls.TextBlock
+    [void]$plainRoot.Inlines.Add((New-Object System.Windows.Documents.Run 'Alpha'))
+    [void]$plainRoot.Inlines.Add((New-Object System.Windows.Documents.Run 'Link'))
+    Check 'plain runs are not embedded' (-not [bool]$hasEmbedded.Invoke($null, @($plainRoot.PSObject.BaseObject, 0)))
+    [void]$plainRoot.Inlines.Add((New-Object System.Windows.Documents.LineBreak))
+    Check 'line break does not block the Text rewrite' (-not [bool]$hasEmbedded.Invoke($null, @($plainRoot.PSObject.BaseObject, 0)))
+
+    $spanRoot = New-Object System.Windows.Controls.TextBlock
+    $span = New-Object System.Windows.Documents.Span
+    $spanLink = New-Object System.Windows.Documents.Hyperlink
+    [void]$spanLink.Inlines.Add((New-Object System.Windows.Documents.Run 'Link'))
+    [void]$span.Inlines.Add($spanLink)
+    [void]$spanRoot.Inlines.Add($span)
+    Check 'nested hyperlink is an embedded inline' ([bool]$hasEmbedded.Invoke($null, @($spanRoot.PSObject.BaseObject, 0)))
+
+    # TextBlock.Text and Inlines coexist here; rewriting Text rebuilds the
+    # InlineCollection, so the property must be left alone for such elements.
+    $mixed = New-Object System.Windows.Controls.TextBlock
+    $mixed.Text = 'Alpha'
+    $mixedLink = New-Object System.Windows.Documents.Hyperlink
+    $mixedLinkRun = New-Object System.Windows.Documents.Run 'Link'
+    [void]$mixedLink.Inlines.Add($mixedLinkRun)
+    [void]$mixed.Inlines.Add($mixedLink)
+    $type.GetMethod('Walk', $f).Invoke($null, @($mixed.PSObject.BaseObject, [System.Collections.Generic.HashSet[object]]::new(), 0))
+    Check 'inline hyperlink survives a Text value' ($mixed.Inlines.Count -eq 2) "inlines: $($mixed.Inlines.Count)"
+    # TextBlock.Text keeps returning the Text DP value once inlines exist, so the
+    # rendered text is asserted through the runs instead.
+    $mixedRun = @($mixed.Inlines)[0]
+    Check 'text beside an inline hyperlink is translated' ($mixedRun.Text -eq 'AAA') "run text is [$($mixedRun.Text)]"
 
     # ToolTipService is reached through its own accessors. A style setter leaves
     # no local value on the element, so only TranslateToolTip can find it.
@@ -261,6 +309,13 @@ try
     $cjkBlock.Text = $cjk
     $type.GetMethod('Walk', $f).Invoke($null, @($cjkBlock.PSObject.BaseObject, [System.Collections.Generic.HashSet[object]]::new(), 0))
     Check 'already translated text is left alone' ($cjkBlock.Text -eq $cjk) "text became [$($cjkBlock.Text)]"
+
+    # A translation can be all-ASCII plus full-width punctuation ("ID："); it must
+    # count as localised or every scan would list it as missing.
+    $contains = $type.GetMethod('ContainsCjk', $f)
+    $fullWidth = 'ID' + [string] [char] 0xFF1A
+    Check 'full-width punctuation counts as localised' ([bool]$contains.Invoke($null, @($fullWidth)))
+    Check 'ascii text is not localised' (-not [bool]$contains.Invoke($null, @('ID:')))
 
     $named = New-Object System.Windows.Controls.TextBlock
     $named.Name = 'Alpha'
@@ -294,6 +349,21 @@ try
         }
     }
     Check 'dictionary escape round-trip' ($bad.Count -eq 0) "$($bad.Count) line(s) do not round-trip"
+
+    # ---- shipped dictionary sanity ----
+    # The loader is last-wins: a duplicated key silently overrides an earlier
+    # translation. (An empty value is legitimate: "The" is dropped as an article.)
+    $dictKeys = New-Object System.Collections.Generic.HashSet[string] ([System.StringComparer]::Ordinal)
+    $dups = New-Object System.Collections.Generic.List[string]
+    foreach ($line in [IO.File]::ReadAllLines($dict, $utf8))
+    {
+        if (-not $line -or $line[0] -eq '#' -or $line[0] -eq ';') { continue }
+        $eq = $line.IndexOf('=')
+        if ($eq -le 0) { continue }
+        $k = $line.Substring(0, $eq)
+        if (-not $dictKeys.Add($k)) { $dups.Add($k) }
+    }
+    Check 'shipped dictionary has no duplicate keys' ($dups.Count -eq 0) ("duplicates: " + ($dups -join ', '))
 
     # ---- the release zip must be a complete, extract-and-run install ----
     # The DLL reads its dictionary from <appbase>\NVC_CHS, so the zip has to carry

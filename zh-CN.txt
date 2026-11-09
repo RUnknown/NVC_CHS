@@ -132,6 +132,7 @@ Only few games support this technology nowadays, most games come with their own 
 ShadowPlay lets you=ShadowPlay 可让你
 Telemetry sends=遥测功能会把
 Process Monitor=进程监视器
+# 中文不需要冠词：独立的 "The" Run 直接删掉
 The=
 The Platform Controllers package is=台式机
 This component adds GPU power management support for=此组件为
@@ -147,7 +148,7 @@ collected data=收集的数据
 connected TV=电视
 control panel=控制面板
 for measuring framerates=帧率
-not needed for desktop computers=不需要 Platform Controllers 包。
+not needed for desktop computers=不需要 Platform Controllers 包
 notebooks=笔记本增加 GPU 电源管理支持
 physics simulation=物理模拟实现
 professional cards=专业显卡
@@ -155,9 +156,83 @@ record, share and stream gameplay=录制、分享并直播游戏画面
 required=必需的
 virtual desktops=虚拟桌面
 
-# ---- 第三页及后续：下载 / 解压 / 安装进度 ----
+# ---- 安装调整（选项页） ----
+Installation Tweaks=安装调整项
+The options on this page can be used for further customization of the driver installation.=本页选项可用于进一步自定义驱动安装。
+Disable Installer Telemetry & Advertising=禁用安装程序遥测与广告
+Unattended Express Installation=无人值守快速安装
+Allow automatic reboot, if needed=需要时自动重启
+Perform a Clean Installation=执行清洁安装
+Add Hardware Support=添加硬件支持
+Template:=模板：
+Id:=ID：
+Name:=名称：
+*Installed: =已安装：
+Enable DLSS Indicator=启用 DLSS 指示器
+(shows DLSS version in-game)=（在游戏内显示 DLSS 版本）
+Disable Multiplane Overlay (MPO)=禁用多平面叠加（MPO）
+Disable Ansel=禁用 Ansel
+Show Expert Tweaks=显示专家调整项
+Use Previous Settings=使用上次设置
+
+# ---- 专家调整项 ----
+Disable Driver Telemetry=禁用驱动遥测
+(Experimental)=（实验性）
+Disable NVIDIA Container=禁用 NVIDIA Container
+(Experimental, breaks NVIDIA Control Panel)=（实验性，会破坏 NVIDIA 控制面板）
+Disable NVIDIA HD Audio device sleep timer=禁用 NVIDIA 高清音频设备休眠计时
+Enable Message Signaled Interrupts=启用消息信号中断（MSI）
+Disable HDCP=禁用 HDCP
+Apply NVENC Video Encoding Session Limit Patch=应用 NVENC 视频编码会话数上限补丁
+Select Patch=选择补丁
+Start external application=启动外部程序
+(provide command and optional arguments)=（提供命令与可选参数）
+Before installation=安装前
+After installation=安装后
+If you have suggestions for additional options,=如果你有更多选项建议，
+let us know=告诉我们
+Rebuild digital signature (required for one or more selected tweaks on this page)=重建数字签名（本页选中的调整项需要）
+Use method compatible with Easy-Anti-Cheat=使用兼容 Easy Anti-Cheat 的方式
+Automatically accept the "driver unsigned" warning=自动接受“驱动未签名”警告
+(triggers a "driver unsigned" warning during installation)=（安装时会触发“驱动未签名”警告）
+Install NVIDIA Control Panel App from Windows Store (no Microsoft account required)=从 Microsoft Store 安装 NVIDIA 控制面板应用（无需 Microsoft 账户）
+Help=帮助
+
+# ---- 中断策略（专家调整项的子面板） ----
+Interrupt Policy=中断策略
+Interrupt Priority=中断优先级
+High=高
+Normal=普通
+Low=低
+Default=默认
+All Processors in Machine=机器上的所有处理器
+All Close Processors=所有相邻处理器
+One Close Processor=一个相邻处理器
+Spread Across All Processors=分散到所有处理器
+Specified Processors=指定处理器
+Select Processors=选择处理器
+NVIDIA Graphics Device=NVIDIA 显卡设备
+
+# ---- 准备阶段：下载 / 解压 / 安装进度 ----
 Preparing=正在准备
 Preparing Sources=正在准备源文件
+Preparing install sources=正在准备安装源
+Downloading...=正在下载...
+Copying installer files=正在复制安装文件
+Canceled=已取消
 Setup=安装
 Setup (decompress)=安装（解压）
 *Copying installer files =正在复制安装文件 
+Finished=已完成
+
+# ---- 完成页 ----
+Your customized installer is now ready.=你定制的安装程序已准备就绪。
+Please choose the next action:=请选择接下来的操作：
+Install=安装
+Starts the NVIDIA installer and lets you complete installation=启动 NVIDIA 安装程序，由你完成安装
+Show in Folder=在文件夹中显示
+Opens a new Explorer window, so you can save or edit the files=打开新的资源管理器窗口，以便保存或编辑这些文件
+Copy Folder=复制文件夹
+Saves the NVCleanstall workspace to a folder, for later installation=将 NVCleanstall 工作区保存到文件夹，供以后安装
+Build Package=构建安装包
+Creates a single installer .EXE file that can be copied to other machines.=创建单个安装程序 .EXE 文件，可复制到其他电脑。
